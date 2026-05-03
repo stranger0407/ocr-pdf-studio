@@ -3,6 +3,7 @@ from __future__ import annotations
 from dotenv import load_dotenv
 load_dotenv()
 
+import traceback
 from concurrent.futures import ThreadPoolExecutor
 
 from fastapi import FastAPI, HTTPException, Request
@@ -12,6 +13,7 @@ from pydantic import BaseModel
 
 from .config import get_settings
 from .jobs import create_job, get_job, output_path_for_job, update_job
+from .logging_utils import append_log, read_logs, get_system_info
 from .ocr_local import process_pdf_job_local
 from .storage import complete_upload, get_upload, start_upload, write_chunk
 
@@ -34,6 +36,7 @@ class StartUploadRequest(BaseModel):
 
 class StartJobRequest(BaseModel):
     upload_id: str
+    quality: str = "standard"   # "fast", "standard", or "maximum"
 
 
 @app.get("/api/health")
@@ -78,16 +81,19 @@ def api_start_job(request: StartJobRequest) -> dict:
         raise HTTPException(status_code=404, detail="upload not found")
     if not upload.get("file_path"):
         raise HTTPException(status_code=409, detail="upload not completed")
+    quality = request.quality if request.quality in ("fast", "standard", "maximum") else "standard"
     job = create_job(upload)
-    executor.submit(_run_job, job["job_id"])
+    job["quality"] = quality
+    executor.submit(_run_job, job["job_id"], quality)
     return job
 
 
-def _run_job(job_id: str) -> None:
+def _run_job(job_id: str, quality: str = "standard") -> None:
     job = get_job(job_id)
     if not job:
         return
     try:
+        append_log("INFO", "ocr", f"Job started — input: {job['input_path']}, quality={quality}", job_id=job_id)
         update_job(job_id, status="processing", progress=1, message="Starting OCR")
         input_path = job["input_path"]
         output_path = output_path_for_job(job_id)
@@ -96,6 +102,7 @@ def _run_job(job_id: str) -> None:
             output_path,
             job_id=job_id,
             update_cb=lambda **kwargs: update_job(job_id, **kwargs),
+            quality=quality,
         )
         update_job(
             job_id,
@@ -104,7 +111,10 @@ def _run_job(job_id: str) -> None:
             message="Complete",
             output_path=output_path,
         )
+        append_log("INFO", "ocr", "Job completed successfully", job_id=job_id)
     except Exception as exc:
+        tb = traceback.format_exc()
+        append_log("ERROR", "ocr", f"{exc}\n{tb}", job_id=job_id)
         update_job(job_id, status="error", message=str(exc))
 
 
@@ -131,3 +141,10 @@ def api_download_job(job_id: str) -> FileResponse:
         filename=f"{job_id}.pdf",
         media_type="application/pdf",
     )
+
+@app.get("/api/logs")
+def api_get_logs(tail: int = 200) -> dict:
+    """Return the last N log entries for the log viewer."""
+    entries = read_logs(tail=min(tail, 500))
+    system = get_system_info()
+    return {"entries": entries, "system": system}

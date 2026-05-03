@@ -40,11 +40,11 @@ export async function completeUpload(uploadId) {
   });
 }
 
-export async function startJob(uploadId) {
+export async function startJob(uploadId, quality = "standard") {
   return request(`${API_BASE}/jobs`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ upload_id: uploadId }),
+    body: JSON.stringify({ upload_id: uploadId, quality }),
   });
 }
 
@@ -54,4 +54,8 @@ export async function getJob(jobId) {
 
 export function downloadUrl(jobId) {
   return `${API_BASE}/jobs/${jobId}/download`;
+}
+
+export async function getLogs(tail = 200) {
+  return request(`${API_BASE}/logs?tail=${tail}`);
 }

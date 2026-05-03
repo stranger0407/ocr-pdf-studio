@@ -8,7 +8,13 @@ venv/
 
 # Node
 node_modules/
+
+# Build output
 dist/
+dist-desktop/
+build/
+backend/build/
+backend/dist/
 
 # Environment
 .env
@@ -16,6 +22,7 @@ dist/
 
 # Data (uploads, outputs, jobs)
 backend/data/
+backend/logs/
 
 # IDE
 .vscode/
@@ -32,3 +39,7 @@ Thumbs.db
 
 # Test files
 *.test.pdf
+*.pdf
+
+# Desktop vendor (too large for git)
+desktop/vendor/

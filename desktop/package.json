@@ -1,0 +1,49 @@
+{
+  "name": "ocr-pdf-studio-desktop",
+  "version": "1.2.0",
+  "description": "Convert scanned PDFs into searchable documents — fast, private, and local.",
+  "author": "Raja <rgjha2001@gmail.com>",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "dev": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts\\dev.ps1",
+    "build": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts\\build.ps1",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "29.4.5",
+    "electron-builder": "24.13.3"
+  },
+  "build": {
+    "appId": "com.local.ocrpdfstudio",
+    "productName": "OCR PDF Studio",
+    "directories": {
+      "output": "../dist-desktop"
+    },
+    "files": [
+      "main.js",
+      "preload.js"
+    ],
+    "extraResources": [
+      {
+        "from": "../frontend/dist",
+        "to": "renderer"
+      },
+      {
+        "from": "../backend/dist/ocr-backend",
+        "to": "backend"
+      },
+      {
+        "from": "vendor",
+        "to": "vendor"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "artifactName": "OCR-PDF-Studio-${version}-setup.${ext}",
+      "signAndEditExecutable": false,
+      "signDlls": false,
+      "verifyUpdateCodeSignature": false
+    }
+  }
+}
